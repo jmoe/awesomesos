@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 
 export function Hero() {
@@ -17,7 +19,10 @@ export function Hero() {
           <Link href="/create-trip" className="btn-primary inline-block w-full md:w-auto">
             Create Trip Plan
           </Link>
-          <button className="bg-white text-sos-blue px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 w-full md:w-auto">
+          <button 
+            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+            className="bg-white text-sos-blue px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 w-full md:w-auto"
+          >
             How It Works
           </button>
         </div>

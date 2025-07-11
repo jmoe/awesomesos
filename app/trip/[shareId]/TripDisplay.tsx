@@ -72,6 +72,10 @@ export function TripDisplay({ trip }: TripDisplayProps) {
       {/* Header */}
       <div className="bg-gradient-to-r from-sos-blue to-sos-dark text-white p-4">
         <div className="container mx-auto max-w-4xl">
+          <Link href="/" className="inline-flex items-center text-white/80 hover:text-white mb-2 text-sm group">
+            <span className="mr-1 group-hover:-translate-x-1 transition-transform">←</span>
+            Back to AwesomeSOS
+          </Link>
           <h1 className="text-2xl font-bold mb-2">AwesomeSOS Trip Plan 🎒</h1>
           <p className="text-sm opacity-90">When life goes sideways we got your back!</p>
         </div>
