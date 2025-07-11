@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Next.js: debug server-side",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev",
+      "serverReadyAction": {
+        "pattern": "- Local:.*:([0-9]+)",
+        "uriFormat": "http://localhost:%s",
+        "action": "debugWithChrome"
+      }
+    },
+    {
+      "name": "Next.js: debug client-side",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "name": "Next.js: debug full stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev",
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "pattern": "- Local:.*:([0-9]+)",
+        "uriFormat": "http://localhost:%s",
+        "action": "debugWithChrome"
+      }
+    },
+    {
+      "name": "Next.js: build",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm build",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Next.js: lint",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm lint",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Next.js: type-check",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm type-check",
+      "console": "integratedTerminal"
+    }
+  ]
+}

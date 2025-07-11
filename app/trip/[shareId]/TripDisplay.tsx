@@ -1,10 +1,48 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { ShareButtons } from './ShareButtons'
 
 interface TripDisplayProps {
-  trip: any // We'll type this properly later
+  trip: {
+    id: string
+    share_id: string
+    trip_description: string
+    start_date: string
+    end_date: string
+    emergency_contact: string | null
+    safety_info: {
+      emergency_numbers: {
+        police: string
+        medical: string
+        park_ranger?: string
+      }
+      weather_summary: string
+      key_risks: string[]
+      safety_tips: string[]
+      packing_essentials: string[]
+      fun_safety_score: {
+        score: number
+        description: string
+      }
+      check_in_schedule: Array<{
+        time: string
+        message: string
+      }>
+      local_resources: string[]
+    }
+    trip_data: {
+      description: string
+      parsed_location: string
+      duration_days: number
+      activities?: string[]
+      group_size?: number
+      experience_level?: string
+    }
+    created_at: string
+    view_count: number
+  }
 }
 
 export function TripDisplay({ trip }: TripDisplayProps) {
@@ -43,7 +81,7 @@ export function TripDisplay({ trip }: TripDisplayProps) {
         {/* Trip Overview */}
         <div className="card mb-6">
           <h2 className="text-2xl font-bold mb-4 text-sos-dark">
-            {safetyInfo.location_name} Adventure
+            {trip.trip_data.parsed_location} Adventure
           </h2>
           <p className="text-gray-700 mb-4">{trip.trip_description}</p>
           
@@ -134,7 +172,7 @@ export function TripDisplay({ trip }: TripDisplayProps) {
         <div className="card mb-6">
           <h3 className="text-xl font-bold mb-3">Check-in Schedule 📱</h3>
           <div className="space-y-3">
-            {safetyInfo.check_in_schedule.map((checkin: any, i: number) => (
+            {safetyInfo.check_in_schedule.map((checkin, i: number) => (
               <div key={i} className="border-l-4 border-sos-orange pl-4">
                 <p className="font-semibold text-sos-dark">{checkin.time}</p>
                 <p className="text-gray-600">{checkin.message}</p>
@@ -167,7 +205,7 @@ export function TripDisplay({ trip }: TripDisplayProps) {
             </button>
           </div>
 
-          <ShareButtons url={shareUrl} title={`My ${safetyInfo.location_name} adventure plan`} />
+          <ShareButtons url={shareUrl} title={`My ${trip.trip_data.parsed_location} adventure plan`} />
         </div>
 
         {/* Footer */}
@@ -175,9 +213,9 @@ export function TripDisplay({ trip }: TripDisplayProps) {
           <p>Trip plan created on {new Date(trip.created_at).toLocaleDateString()}</p>
           <p className="mt-2">
             Create your own safety plan at{' '}
-            <a href="/" className="text-sos-blue hover:underline">
+            <Link href="/" className="text-sos-blue hover:underline">
               AwesomeSOS.com
-            </a>
+            </Link>
           </p>
         </div>
       </div>

@@ -1,28 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateShareId } from '@/lib/utils'
-import { generateSafetyInfo } from '@/lib/ai'
+import { analyzeTripAndGenerateSafetyInfo } from '@/lib/ai'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tripDescription, startDate, endDate, emergencyContact } = body
+    const { tripDescription } = body
 
-    if (!tripDescription || !startDate || !endDate || !emergencyContact) {
+    if (!tripDescription?.trim()) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Trip description is required' },
         { status: 400 }
       )
     }
 
-    // Generate safety info
-    const safetyInfo = await generateSafetyInfo(tripDescription, startDate, endDate)
+    // Analyze trip and generate safety info using AI
+    const analysis = await analyzeTripAndGenerateSafetyInfo(tripDescription.trim())
 
-    // Parse trip data from description (for MVP, keep it simple)
+    // Extract dates with fallbacks
+    const now = new Date()
+    const startDate = analysis.trip_details.start_date || now.toISOString().split('T')[0]
+    const endDate = analysis.trip_details.end_date || 
+      new Date(now.getTime() + (analysis.trip_details.duration_days || 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    // Calculate duration if not provided
+    const durationDays = analysis.trip_details.duration_days || 
+      Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+
+    // Parse trip data from AI analysis
     const tripData = {
       description: tripDescription,
-      parsed_location: safetyInfo.location_name,
-      duration_days: Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)),
+      parsed_location: analysis.trip_details.location_name,
+      duration_days: durationDays,
+      activities: analysis.trip_details.activities,
+      group_size: analysis.trip_details.group_size,
+      experience_level: analysis.trip_details.experience_level,
     }
 
     // Create Supabase client
@@ -39,8 +52,8 @@ export async function POST(request: NextRequest) {
         trip_description: tripDescription,
         start_date: startDate,
         end_date: endDate,
-        emergency_contact: emergencyContact,
-        safety_info: safetyInfo,
+        emergency_contact: analysis.trip_details.emergency_contact || null,
+        safety_info: analysis.safety_info,
         trip_data: tripData,
       })
       .select()

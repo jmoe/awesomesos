@@ -6,15 +6,12 @@ import { useRouter } from 'next/navigation'
 export function TripForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    tripDescription: '',
-    startDate: '',
-    endDate: '',
-    emergencyContact: '',
-  })
+  const [tripDescription, setTripDescription] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!tripDescription.trim()) return
+    
     setLoading(true)
     
     try {
@@ -23,7 +20,7 @@ export function TripForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ tripDescription: tripDescription.trim() }),
       })
 
       if (!response.ok) throw new Error('Failed to create trip')
@@ -37,18 +34,11 @@ export function TripForm() {
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
-
   const exampleTrips = [
-    "I'm going hiking at Yosemite's Half Dome this weekend with my friend Sarah. We're both experienced hikers but it's our first time doing Half Dome.",
-    "Solo backpacking trip through the Grand Canyon for 5 days. Planning to camp at Bright Angel and Indian Garden.",
-    "Taking my kids (ages 8 and 10) camping at Big Sur for the first time. We'll be doing easy hikes and staying at the campground.",
-    "Rock climbing at Joshua Tree with a group of 4 friends. We're intermediate climbers planning to tackle some classic routes.",
+    "I'm going hiking at Yosemite's Half Dome this Saturday with my friend Sarah. We're both experienced hikers but it's our first time doing Half Dome. If something happens, contact my mom at (555) 123-4567.",
+    "Solo backpacking trip through the Grand Canyon from March 15-20. Planning to camp at Bright Angel and Indian Garden. Emergency contact is my brother Mike at mike.smith@email.com.",
+    "Taking my kids (ages 8 and 10) camping at Big Sur this weekend for 2 nights. We'll be doing easy hikes and staying at the campground. Wife's number: (555) 987-6543.",
+    "Rock climbing at Joshua Tree with a group of 4 friends next month. We're intermediate climbers planning to tackle some classic routes over 3 days. Contact person: Dave (555) 456-7890.",
   ]
 
   return (
@@ -58,16 +48,15 @@ export function TripForm() {
           Tell us about your adventure 🎒
         </label>
         <p className="text-sm text-gray-600 mb-3">
-          Describe your trip in your own words - where you're going, what you'll be doing, and who's coming with you.
+          Describe your trip in your own words - where you're going, when, what you'll be doing, who's coming, and who to contact in an emergency.
         </p>
         <textarea
           id="tripDescription"
-          name="tripDescription"
-          value={formData.tripDescription}
-          onChange={handleChange}
+          value={tripDescription}
+          onChange={(e) => setTripDescription(e.target.value)}
           required
           rows={6}
-          placeholder="Example: I'm going on a 3-day backpacking trip to the Lost Coast Trail in Northern California with two friends. We're planning to hike about 25 miles total and camp on the beach. One friend has a bad knee but we're taking it slow..."
+          placeholder="Example: I'm going on a 3-day backpacking trip to the Lost Coast Trail in Northern California with two friends from Friday to Sunday. We're planning to hike about 25 miles total and camp on the beach. One friend has a bad knee but we're taking it slow. If something happens, contact my mom Sarah at (555) 123-4567."
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sos-orange focus:border-transparent text-base"
         />
         
@@ -78,67 +67,19 @@ export function TripForm() {
               <button
                 key={i}
                 type="button"
-                onClick={() => setFormData({ ...formData, tripDescription: example })}
+                onClick={() => setTripDescription(example)}
                 className="text-left text-sm text-sos-blue hover:text-sos-orange transition-colors"
               >
-                → {example.substring(0, 60)}...
+                → {example.substring(0, 70)}...
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="startDate" className="block text-sm font-medium mb-2">
-            When do you leave? 📅
-          </label>
-          <input
-            type="datetime-local"
-            id="startDate"
-            name="startDate"
-            value={formData.startDate}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sos-orange focus:border-transparent"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="endDate" className="block text-sm font-medium mb-2">
-            When do you return? 🏁
-          </label>
-          <input
-            type="datetime-local"
-            id="endDate"
-            name="endDate"
-            value={formData.endDate}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sos-orange focus:border-transparent"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="emergencyContact" className="block text-sm font-medium mb-2">
-          Emergency Contact 📞
-        </label>
-        <input
-          type="text"
-          id="emergencyContact"
-          name="emergencyContact"
-          value={formData.emergencyContact}
-          onChange={handleChange}
-          required
-          placeholder="Mom: (555) 123-4567"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sos-orange focus:border-transparent"
-        />
-      </div>
-
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !tripDescription.trim()}
         className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
@@ -147,10 +88,10 @@ export function TripForm() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Creating Your Safety Plan... 🤖
+            Analyzing your trip and creating safety plan... 🤖
           </span>
         ) : (
-          'Generate Safety Plan 🚀'
+          'Generate My Safety Plan 🚀'
         )}
       </button>
     </form>
