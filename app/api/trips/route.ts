@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/app/lib/supabase/server'
-import { generateShareId } from '@/app/lib/utils'
+import { createClient } from '@/lib/supabase/server'
+import { generateShareId } from '@/lib/utils'
 
 // For now, we'll use mock AI generation. You can replace this with OpenAI/Claude later
 async function generateSafetyInfo(tripDescription: string, startDate: string, endDate: string) {
