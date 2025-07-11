@@ -143,4 +143,4 @@
 ---
 
 *Last Updated: January 11, 2025*
-*"When life goes sideways, AwesomeSOS is on your side!"*
+*"When life goes sideways we got your back!"*

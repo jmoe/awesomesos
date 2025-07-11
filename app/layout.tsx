@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '🤩 AwesomeSOS 🆘 - When life goes sideways, we\'re on your side!',
+  title: '🤩 AwesomeSOS 🆘 - When life goes sideways we got your back!',
   description: 'AI-powered adventure safety plans that keep your loved ones informed while you explore',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
 }

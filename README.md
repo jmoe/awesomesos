@@ -1,6 +1,6 @@
 # AwesomeSOS 🚨🎒
 
-> When life goes sideways, AwesomeSOS is on your side!
+> When life goes sideways we got your back!
 
 AI-powered adventure safety service that helps people stay safe on their adventures by generating intelligent safety information that can be shared with friends and family.
 

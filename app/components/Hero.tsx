@@ -8,7 +8,7 @@ export function Hero() {
           🤩 AwesomeSOS 🆘
         </h1>
         <p className="text-2xl md:text-3xl font-medium mb-6 text-yellow-300">
-          When life goes sideways, we're on your side!
+          When life goes sideways we got your back!
         </p>
         <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90">
           Share your adventure plans with AI-powered safety info to keep your loved ones in the loop 🎒

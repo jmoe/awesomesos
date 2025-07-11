@@ -88,7 +88,7 @@ Then generate comprehensive safety information:
 - Practical safety tips
 - Detailed packing list for the activities
 - Fun safety score (1=very safe, 10=extreme risk)
-- Reasonable check-in schedule
+- Reasonable check-in schedule with specific times (e.g., "8:00 AM", "12:00 PM", "6:00 PM")
 - Local resources and facilities
 
 Guidelines:
@@ -97,6 +97,7 @@ Guidelines:
 - Provide practical, actionable advice
 - Emergency numbers should be realistic for the area (use 911 for US/Canada, research others)
 - Safety score should reflect actual risk level
+- Check-in times should be specific times like "7:00 AM", "1:00 PM", "7:00 PM" not generic descriptions
 - Make it feel like advice from a knowledgeable friend who cares about safety but loves adventure!
 
 If dates or emergency contacts aren't mentioned, leave those fields empty - don't make them up.`
@@ -169,9 +170,9 @@ function getFallbackTripAnalysis(tripDescription: string): TripAnalysis {
         description: "Moderate adventure - stay alert and have fun! 🌟",
       },
       check_in_schedule: [
-        { time: 'Before departure', message: 'Heading out! Weather looks good 🌤️' },
-        { time: 'Midday', message: 'Halfway point reached! All going well 📍' },
-        { time: 'Evening/arrival', message: 'Made it safely! Time to celebrate 🎉' },
+        { time: '8:00 AM', message: 'Heading out! Weather looks good 🌤️' },
+        { time: '12:00 PM', message: 'Halfway point reached! All going well 📍' },
+        { time: '6:00 PM', message: 'Made it safely! Time to celebrate 🎉' },
       ],
       local_resources: [
         '🏥 Check local hospital locations before departure',

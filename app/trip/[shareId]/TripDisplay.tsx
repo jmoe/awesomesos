@@ -73,7 +73,7 @@ export function TripDisplay({ trip }: TripDisplayProps) {
       <div className="bg-gradient-to-r from-sos-blue to-sos-dark text-white p-4">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-2xl font-bold mb-2">AwesomeSOS Trip Plan 🎒</h1>
-          <p className="text-sm opacity-90">When life goes sideways, we're on your side!</p>
+          <p className="text-sm opacity-90">When life goes sideways we got your back!</p>
         </div>
       </div>
 
