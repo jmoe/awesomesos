@@ -31,10 +31,19 @@ AI-powered adventure safety service that helps people stay safe on their adventu
 
 3. Set up environment variables:
    - Copy `.env.local.example` to `.env.local`
-   - Add your Supabase credentials:
+   - Add your Supabase credentials and AI API key:
      ```
+     # Supabase
      NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
      NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+     
+     # AI Provider (choose one)
+     AI_PROVIDER=openai
+     OPENAI_API_KEY=your_openai_api_key
+     
+     # Or use Claude instead:
+     # AI_PROVIDER=anthropic
+     # ANTHROPIC_API_KEY=your_anthropic_api_key
      ```
 
 4. Run the development server:
@@ -63,8 +72,9 @@ awesomesos/
 
 ## Next Steps
 
-- Set up Supabase database schema for trips
-- Integrate AI service for safety recommendations
-- Add user authentication
-- Implement trip sharing functionality
+- ✅ Set up Supabase database schema for trips
+- ✅ Integrate AI service for safety recommendations (OpenAI/Claude)
+- 🚀 Deploy to Vercel with environment variables
+- Add user authentication (optional)
 - Add real-time weather integration
+- Implement advanced safety features

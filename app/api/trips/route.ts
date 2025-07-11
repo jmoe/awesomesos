@@ -1,67 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateShareId } from '@/lib/utils'
-
-// For now, we'll use mock AI generation. You can replace this with OpenAI/Claude later
-async function generateSafetyInfo(tripDescription: string, startDate: string, endDate: string) {
-  // Extract location from description (simple regex for MVP)
-  const locationMatch = tripDescription.match(/(?:at|to|in)\s+([A-Z][a-zA-Z\s]+?)(?:\s+(?:with|for|this)|[,.]|$)/i)
-  const location = locationMatch ? locationMatch[1].trim() : 'your destination'
-
-  // Mock safety info - replace with actual AI call
-  const safetyInfo = {
-    location_name: location,
-    emergency_numbers: {
-      police: '911',
-      medical: '911',
-      park_ranger: location.toLowerCase().includes('park') ? '1-888-987-PARK' : null,
-    },
-    weather_summary: '☀️ Mostly sunny with temperatures ranging from 65-78°F. Light winds expected.',
-    key_risks: [
-      '⚠️ Trail conditions may be slippery after recent rain',
-      '🐻 Wildlife activity reported in the area - store food properly',
-      '🌄 Altitude changes may cause fatigue - pace yourself',
-      '💧 Limited water sources on trail - bring extra',
-    ],
-    safety_tips: [
-      '📱 Download offline maps before you lose signal',
-      '🎒 Pack the 10 essentials including first aid kit',
-      '👥 Let someone know your exact route and expected return',
-      '⏰ Start early to avoid afternoon thunderstorms',
-      '🥾 Break in new boots before the trip',
-      '📸 Take photos of trail markers for navigation',
-      '🔦 Bring headlamp with extra batteries',
-    ],
-    packing_essentials: [
-      '🗺️ Map and compass/GPS',
-      '☀️ Sun protection (sunscreen, hat, sunglasses)',
-      '🔦 Headlamp + extra batteries',
-      '🩹 First aid kit',
-      '🔪 Knife or multi-tool',
-      '🔥 Fire starter',
-      '🏠 Emergency shelter',
-      '🍫 Extra food + water',
-      '👕 Extra clothes',
-      '📞 Emergency whistle',
-    ],
-    fun_safety_score: {
-      score: 7,
-      description: "Pretty chill adventure! Just don't pet the wildlife 🦌",
-    },
-    check_in_schedule: [
-      { time: 'Before departure', message: 'Heading out! Weather looks great 🌤️' },
-      { time: 'Midday', message: 'Halfway there! Views are incredible 📸' },
-      { time: 'Evening/arrival', message: 'Made it safely! Time to relax 🏕️' },
-    ],
-    local_resources: [
-      '🏥 Nearest Hospital: Regional Medical Center (15 miles)',
-      '🚁 Search & Rescue: County SAR Team (555-0123)',
-      '⛽ Last gas station: Mountain View Gas (at park entrance)',
-    ],
-  }
-
-  return safetyInfo
-}
+import { generateSafetyInfo } from '@/lib/ai'
 
 export async function POST(request: NextRequest) {
   try {
