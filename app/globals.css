@@ -1,30 +1,93 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    --sos-orange: 255 107 53;
-    --sos-blue: 0 78 137;
-    --sos-light: 247 249 251;
-    --sos-dark: 29 53 87;
-  }
-
-  body {
-    @apply bg-sos-light text-sos-dark;
-  }
+:root {
+  --sos-orange: #FF6B35;
+  --sos-blue: #004E89;
+  --sos-light: #F7F9FB;
+  --sos-dark: #1D3557;
 }
 
-@layer components {
-  .btn-primary {
-    @apply bg-sos-orange text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200;
-  }
+body {
+  background-color: var(--sos-light);
+  color: var(--sos-dark);
+}
 
-  .btn-secondary {
-    @apply bg-sos-blue text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200;
-  }
+.btn-primary {
+  background-color: var(--sos-orange);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
+  transition: all 200ms;
+  display: inline-block;
+  text-decoration: none;
+}
 
-  .card {
-    @apply bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200;
-  }
+.btn-primary:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: var(--sos-blue);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
+  transition: all 200ms;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.card {
+  background-color: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  transition: box-shadow 200ms;
+}
+
+.card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.bg-sos-light {
+  background-color: var(--sos-light);
+}
+
+.bg-sos-dark {
+  background-color: var(--sos-dark);
+}
+
+.bg-sos-blue {
+  background-color: var(--sos-blue);
+}
+
+.bg-sos-orange {
+  background-color: var(--sos-orange);
+}
+
+.text-sos-light {
+  color: var(--sos-light);
+}
+
+.text-sos-dark {
+  color: var(--sos-dark);
+}
+
+.text-sos-blue {
+  color: var(--sos-blue);
+}
+
+.text-sos-orange {
+  color: var(--sos-orange);
 }

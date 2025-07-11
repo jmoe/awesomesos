@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@layer theme {
+  --color-sos-orange: #FF6B35;
+  --color-sos-blue: #004E89;
+  --color-sos-light: #F7F9FB;
+  --color-sos-dark: #1D3557;
+}
