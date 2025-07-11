@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --sos-orange: 255 107 53;
+    --sos-blue: 0 78 137;
+    --sos-light: 247 249 251;
+    --sos-dark: 29 53 87;
+  }
+
+  body {
+    @apply bg-sos-light text-sos-dark;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-sos-orange text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-sos-blue text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200;
+  }
+}
