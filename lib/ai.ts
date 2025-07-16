@@ -116,6 +116,9 @@ First, identify the general geographic area of the trip (state, region, park sys
 Then, carefully extract any trip details mentioned:
 - Location/destination (required)
 - Start/end dates (if mentioned - convert to ISO format like "2024-01-15")
+  * IMPORTANT: Convert relative dates to actual dates. Today is ${new Date().toISOString().split('T')[0]}
+  * Examples: "tomorrow" → next day's date, "next week" → 7 days from today, "in 3 days" → 3 days from today
+  * For time of day references like "middle of the day" or "noon", note them but dates are more important
 - Duration in days (if mentioned or can be calculated)
 - Emergency contact person (if mentioned)
 - Activities planned (extract all mentioned with their types and details)
@@ -135,11 +138,13 @@ IMPORTANT: Extract ALL specific locations and addresses mentioned in the trip de
 
 CRITICAL: For better geocoding accuracy, ALWAYS try to infer and include the city and/or state for each location:
 - If a trail is in a national park, include the park name and state in the location name
+- For well-known trails like "Angel's Landing", "Half Dome", "Bright Angel", etc., ALWAYS include their park name even if not mentioned
 - If multiple locations are mentioned in the same area, infer they share the same city/state
 - Use context clues from the description to determine the general area
+- Common knowledge: Angel's Landing is in Zion NP (UT), Half Dome is in Yosemite (CA), Bright Angel is in Grand Canyon (AZ)
 - Examples:
   * "Half Dome Trail" → name: "Half Dome Trail, Yosemite National Park, CA"
-  * "Angels Landing" (when Zion is mentioned) → name: "Angels Landing, Zion National Park, UT"
+  * "Angels Landing" or "Angel's Landing" → name: "Angels Landing, Zion National Park, UT" (always include the park even if not explicitly mentioned)
   * "Bright Angel Trail" (when Grand Canyon is mentioned) → name: "Bright Angel Trail, Grand Canyon, AZ"
   * "Paradise Loop Trail" (when Mount Rainier is mentioned) → name: "Paradise Loop Trail, Mount Rainier National Park, WA"
   * "Emerald Lake Trail" (when Rocky Mountain NP is mentioned) → name: "Emerald Lake Trail, Rocky Mountain National Park, CO"
