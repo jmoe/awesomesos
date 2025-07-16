@@ -1,18 +1,53 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { isValidUrl, fetchUrlContent } from '@/lib/url-utils'
 
 export function TripForm() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [tripDescription, setTripDescription] = useState('')
+  const [optimizedContent, setOptimizedContent] = useState<string | null>(null)
+  const [fetchingUrl, setFetchingUrl] = useState(false)
+  const [urlError, setUrlError] = useState<string | null>(null)
+
+  // Check for URL when text changes
+  useEffect(() => {
+    const checkAndFetchUrl = async () => {
+      const trimmedText = tripDescription.trim()
+      
+      // Only process if it's a valid URL and we're not already fetching
+      if (isValidUrl(trimmedText) && !fetchingUrl) {
+        setFetchingUrl(true)
+        setUrlError(null)
+        
+        const result = await fetchUrlContent(trimmedText)
+        
+        if (result.error) {
+          setUrlError(result.error)
+          setFetchingUrl(false)
+        } else {
+          // Use the AI-generated summary as the trip description
+          setTripDescription(result.content)
+          // Store the detailed content for safety plan generation
+          setOptimizedContent(result.optimizedContent || null)
+          setFetchingUrl(false)
+        }
+      }
+    }
+    
+    // Debounce the URL check
+    const timer = setTimeout(checkAndFetchUrl, 500)
+    return () => clearTimeout(timer)
+  }, [tripDescription, fetchingUrl])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!tripDescription.trim()) return
+    if (!tripDescription.trim() || fetchingUrl) return
     
     setLoading(true)
+    setUrlError(null)
     
     try {
       const response = await fetch('/api/trips', {
@@ -20,7 +55,10 @@ export function TripForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ tripDescription: tripDescription.trim() }),
+        body: JSON.stringify({ 
+          tripDescription: tripDescription.trim(),
+          optimizedContent: optimizedContent // Send the detailed content if available
+        }),
       })
 
       if (!response.ok) throw new Error('Failed to create trip')
@@ -49,16 +87,41 @@ export function TripForm() {
         </label>
         <p className="text-sm text-gray-600 mb-3">
           Describe your trip in your own words - where you're going, when, what you'll be doing, who's coming, and who to contact in an emergency.
+          <span className="block mt-1 text-sos-orange">You can also paste a URL from AllTrails, blog posts, or event pages!</span>
         </p>
         <textarea
           id="tripDescription"
           value={tripDescription}
-          onChange={(e) => setTripDescription(e.target.value)}
+          onChange={(e) => {
+            setTripDescription(e.target.value)
+            setUrlError(null)
+            // Clear optimized content when user manually edits
+            if (!isValidUrl(e.target.value.trim())) {
+              setOptimizedContent(null)
+            }
+          }}
           required
           rows={6}
-          placeholder="Example: I'm going on a 3-day backpacking trip to the Lost Coast Trail in Northern California with two friends from Friday to Sunday. We're planning to hike about 25 miles total and camp on the beach. One friend has a bad knee but we're taking it slow. If something happens, contact my mom Sarah at (555) 123-4567."
+          placeholder="Paste an AllTrails link (e.g., https://www.alltrails.com/trail/...) or describe your trip: I'm going on a 3-day backpacking trip..."
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sos-orange focus:border-transparent text-base"
+          disabled={fetchingUrl}
         />
+        
+        {fetchingUrl && (
+          <div className="mt-2 text-sm text-sos-orange flex items-center">
+            <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Fetching content from URL...
+          </div>
+        )}
+        
+        {urlError && (
+          <div className="mt-2 text-sm text-red-600">
+            {urlError}
+          </div>
+        )}
         
         <div className="mt-3">
           <p className="text-xs text-gray-500 mb-2">Need inspiration? Try one of these:</p>
@@ -79,7 +142,7 @@ export function TripForm() {
 
       <button
         type="submit"
-        disabled={loading || !tripDescription.trim()}
+        disabled={loading || fetchingUrl || !tripDescription.trim()}
         className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (

@@ -13,15 +13,15 @@ const TripAnalysisSchema = z.object({
     duration_days: z.number().optional().describe("Trip duration in days if determinable"),
     emergency_contact: z.string().optional().describe("Emergency contact if mentioned"),
     activities: z.array(z.object({
-      type: z.enum(['walking', 'hiking', 'biking', 'driving', 'camping', 'climbing', 'swimming', 'kayaking', 'rafting', 'skiing', 'snowboarding', 'snowmobiling', 'backpacking', 'fishing', 'hunting', 'horseback_riding', 'rock_climbing', 'mountaineering', 'surfing', 'diving', 'snorkeling', 'sailing', 'canoeing', 'paddleboarding', 'running', 'trail_running', 'wildlife_viewing', 'photography', 'stargazing', 'other']).describe("Type of activity"),
+      type: z.string().describe("Type of activity - common types include: walking, hiking, biking, driving, camping, climbing, swimming, kayaking, rafting, skiing, snowboarding, snowmobiling, backpacking, fishing, hunting, horseback_riding, rock_climbing, mountaineering, surfing, diving, snorkeling, sailing, canoeing, paddleboarding, running, trail_running, wildlife_viewing, photography, stargazing, but any activity type is allowed"),
       name: z.string().describe("Specific activity name or description"),
-      difficulty: z.enum(['easy', 'moderate', 'difficult', 'extreme']).optional().describe("Difficulty level if mentioned"),
+      difficulty: z.string().optional().describe("Difficulty level if mentioned - common values: easy, moderate, difficult, extreme, but any difficulty description is allowed"),
     })).describe("List of activities with their types"),
     group_size: z.number().optional().describe("Number of people if mentioned"),
-    experience_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+    experience_level: z.string().optional().describe("Experience level - common values: beginner, intermediate, advanced, expert, but any experience level description is allowed"),
     locations: z.array(z.object({
       name: z.string().describe("Location name (e.g., 'Yosemite National Park', 'Half Dome Trail')"),
-      type: z.enum(['park', 'trail', 'campground', 'landmark', 'city', 'wilderness_area', 'address', 'hotel', 'parking', 'trailhead', 'visitor_center', 'other']),
+      type: z.string().describe("Type of location - common types include: park, trail, campground, landmark, city, wilderness_area, address, hotel, parking, trailhead, visitor_center, lake, river, beach, mountain, forest, desert, canyon, waterfall, hot_spring, cave, island, glacier, meadow, valley, summit, pass, road, viewpoint, picnic_area, boat_launch, marina, resort, lodge, hut, shelter, ranger_station, rest_area, overlook, bridge, dam, reservoir, spring, creek, wetland, marsh, estuary, bay, cove, peninsula, cliff, gorge, ridge, plateau, but any location type is allowed"),
       address: z.string().optional().describe("Full street address if mentioned (e.g., '123 Main St, Yosemite, CA 95389')"),
       coordinates: z.object({
         lat: z.number().optional().describe("Latitude if known"),
@@ -53,6 +53,13 @@ const TripAnalysisSchema = z.object({
 })
 
 type TripAnalysis = z.infer<typeof TripAnalysisSchema>
+
+// Schema for URL content preprocessing
+const URLContentSchema = z.object({
+  summary: z.string().describe("A descriptive but concise summary of the trip/event (2-4 sentences) that sounds natural"),
+  optimized_content: z.string().describe("Detailed content with all trip-relevant information for safety plan generation"),
+  trip_type: z.enum(['trail', 'event', 'itinerary', 'blog_post', 'guide', 'other']).describe("Type of content"),
+})
 
 // Get AI provider based on environment variable
 function getAIProvider() {
@@ -98,6 +105,8 @@ export async function analyzeTripAndGenerateSafetyInfo(
   
   const prompt = `You are an expert outdoor safety consultant. Analyze this trip description and extract key details, then generate comprehensive safety information.
 
+Note: The description below might be from a webpage, blog post, or event listing. Extract relevant trip information even if the format is unconventional.
+
 Trip Description: ${tripDescription}
 
 First, carefully extract any trip details mentioned:
@@ -128,7 +137,7 @@ IMPORTANT: Extract ALL specific locations and addresses mentioned in the trip de
   * "Happy Isles Trailhead" → {name: "Happy Isles Trailhead", type: "trailhead"}
 - If you don't know exact coordinates for a location, still include it but omit the coordinates field - we will geocode it later
 
-Then generate comprehensive safety information:
+Then, SEPARATELY from trip_details, generate comprehensive safety information:
 - Emergency numbers for the specific location
 - Weather considerations for the area and time
 - Location and activity-specific risks
@@ -147,7 +156,13 @@ Guidelines:
 - Check-in times should be specific times like "7:00 AM", "1:00 PM", "7:00 PM" not generic descriptions
 - Make it feel like advice from a knowledgeable friend who cares about safety but loves adventure!
 
-If dates or emergency contacts aren't mentioned, leave those fields empty - don't make them up.`
+If dates or emergency contacts aren't mentioned, leave those fields empty - don't make them up.
+
+IMPORTANT: The response must have two top-level fields:
+1. trip_details (containing location_name, activities, locations, etc.)
+2. safety_info (containing emergency_numbers, weather_summary, key_risks, etc.)
+
+These should be SEPARATE top-level fields, NOT nested inside each other.`
 
   try {
     const result = await generateObject({
@@ -254,5 +269,93 @@ function getFallbackTripAnalysis(tripDescription: string): TripAnalysis {
         '📱 Verify cell coverage in the area',
       ],
     },
+  }
+}
+
+export async function preprocessUrlContent(
+  content: string,
+  title?: string,
+  url?: string
+): Promise<{
+  summary: string
+  optimizedContent: string
+  error?: string
+}> {
+  const model = getAIProvider()
+  
+  const isAllTrails = url?.includes('alltrails.com')
+  const isTrailWebsite = url && (isAllTrails || url.includes('hikingproject.com') || url.includes('trailforks.com'))
+  
+  const prompt = `You are helping extract trip/adventure information from a webpage. 
+
+Title: ${title || 'No title'}
+URL: ${url || 'No URL'}
+Content: ${content}
+
+${isAllTrails ? 'This is an AllTrails link. Focus on extracting trail-specific information.' : ''}
+${isTrailWebsite ? 'This appears to be a trail/hiking website.' : ''}
+
+Please analyze this content and:
+
+1. Create a descriptive but concise summary (2-4 sentences) that captures the essence of the trip/adventure. 
+   ${isTrailWebsite ? 
+     'For trail websites, format like: "I\'m planning to hike [trail name] in [location]. It\'s a [distance] [difficulty] [trail type] with [elevation gain] that typically takes [duration]. [Add one interesting feature or characteristic]."' : 
+     'This should read like something a user would naturally type when describing their plans to a friend. Include key details that make the trip unique.'}
+
+2. Extract and optimize the content to focus ONLY on trip-relevant information:
+   ${isTrailWebsite ? `
+   For trail websites, prioritize:
+   - Trail name and exact location
+   - Trail length/distance
+   - Elevation gain
+   - Difficulty rating
+   - Typical duration/time to complete
+   - Trail type (loop, out-and-back, point-to-point)
+   - Key features (waterfalls, views, etc.)
+   - Best season/conditions
+   - Parking and trailhead info
+   - Permit requirements
+   - Dog-friendly status
+   - Recent trail conditions or alerts` : `
+   General trip information:
+   - Destination/location details
+   - Dates and duration
+   - Activities planned
+   - Group size or participants
+   - Difficulty level or experience requirements
+   - Meeting points or logistics
+   - Any mentioned safety considerations
+   - Emergency contacts if provided`}
+
+Remove all irrelevant content like:
+- Website navigation elements
+- User reviews and ratings (just note if highly rated)
+- Photo galleries
+- Advertisements
+- Social media links
+- Generic website footer content
+- Unrelated articles or content
+
+The optimized content should be comprehensive and include ALL relevant details that would be useful for generating a safety plan. Don't over-summarize - keep important details like specific locations, features, warnings, conditions, etc. This will be used behind the scenes for safety planning, so more detail is better.`
+
+  try {
+    const result = await generateObject({
+      model,
+      schema: URLContentSchema,
+      prompt,
+    })
+
+    return {
+      summary: result.object.summary,
+      optimizedContent: result.object.optimized_content,
+    }
+  } catch (error) {
+    console.error('URL content preprocessing failed:', error)
+    // Fallback to basic extraction
+    return {
+      summary: title ? `Trip information from: ${title}` : 'Trip information from webpage',
+      optimizedContent: content.substring(0, 2000) + '...',
+      error: 'Failed to optimize content',
+    }
   }
 }

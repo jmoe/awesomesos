@@ -7,7 +7,7 @@ import { geocodeLocations } from '@/lib/geocoding'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tripDescription } = body
+    const { tripDescription, optimizedContent } = body
 
     if (!tripDescription?.trim()) {
       return NextResponse.json(
@@ -16,8 +16,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Use optimized content for AI analysis if available (from URL), otherwise use the description
+    const contentForAnalysis = optimizedContent || tripDescription.trim()
+    
     // Analyze trip and generate safety info using AI
-    const aiResult = await analyzeTripAndGenerateSafetyInfo(tripDescription.trim())
+    const aiResult = await analyzeTripAndGenerateSafetyInfo(contentForAnalysis)
     const { analysis, responseLog } = aiResult
 
     // Geocode locations that don't have coordinates
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
       .from('trips')
       .insert({
         share_id: shareId,
-        trip_description: tripDescription,
+        trip_description: tripDescription.trim(), // Always use the user-friendly summary for display
         start_date: startDate,
         end_date: endDate,
         emergency_contact: analysis.trip_details.emergency_contact || null,
