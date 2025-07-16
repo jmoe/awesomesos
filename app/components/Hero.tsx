@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
+import Link from "next/link";
 
 export function Hero() {
   return (
@@ -13,20 +13,24 @@ export function Hero() {
           When life goes sideways we got your back!
         </p>
         <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90">
-          Share your adventure plans with AI-powered safety info to keep your loved ones in the loop 🎒
+          Share your adventure plans with AI-powered safety info to keep your
+          loved ones in the loop 🎒
         </p>
         <div className="space-y-4 md:space-y-0 md:space-x-4 md:flex md:justify-center">
-          <Link href="/create-trip" className="btn-primary inline-block w-full md:w-auto">
+          <Link
+            href="/create-trip"
+            className="btn-primary inline-block w-full md:w-auto"
+          >
             Create Trip Plan
           </Link>
-          <button 
-            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-            className="bg-white text-sos-blue px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 w-full md:w-auto"
+          <Link
+            href="/trips"
+            className="bg-white text-sos-blue px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 inline-block w-full md:w-auto"
           >
-            How It Works
-          </button>
+            Browse Adventures
+          </Link>
         </div>
       </div>
     </section>
-  )
+  );
 }

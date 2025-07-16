@@ -10,6 +10,7 @@ CREATE TABLE trips (
   -- Generated content
   safety_info JSONB,
   trip_data JSONB, -- Parsed trip details from AI
+  ai_response_log JSONB, -- Full AI response for debugging/auditing
   
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),

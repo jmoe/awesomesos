@@ -12,9 +12,22 @@ const TripAnalysisSchema = z.object({
     end_date: z.string().optional().describe("ISO date string if mentioned in description"),
     duration_days: z.number().optional().describe("Trip duration in days if determinable"),
     emergency_contact: z.string().optional().describe("Emergency contact if mentioned"),
-    activities: z.array(z.string()).describe("List of activities mentioned"),
+    activities: z.array(z.object({
+      type: z.enum(['walking', 'hiking', 'biking', 'driving', 'camping', 'climbing', 'swimming', 'kayaking', 'rafting', 'skiing', 'snowboarding', 'snowmobiling', 'backpacking', 'fishing', 'hunting', 'horseback_riding', 'rock_climbing', 'mountaineering', 'surfing', 'diving', 'snorkeling', 'sailing', 'canoeing', 'paddleboarding', 'running', 'trail_running', 'wildlife_viewing', 'photography', 'stargazing', 'other']).describe("Type of activity"),
+      name: z.string().describe("Specific activity name or description"),
+      difficulty: z.enum(['easy', 'moderate', 'difficult', 'extreme']).optional().describe("Difficulty level if mentioned"),
+    })).describe("List of activities with their types"),
     group_size: z.number().optional().describe("Number of people if mentioned"),
     experience_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
+    locations: z.array(z.object({
+      name: z.string().describe("Location name (e.g., 'Yosemite National Park', 'Half Dome Trail')"),
+      type: z.enum(['park', 'trail', 'campground', 'landmark', 'city', 'wilderness_area', 'address', 'hotel', 'parking', 'trailhead', 'visitor_center', 'other']),
+      address: z.string().optional().describe("Full street address if mentioned (e.g., '123 Main St, Yosemite, CA 95389')"),
+      coordinates: z.object({
+        lat: z.number().optional().describe("Latitude if known"),
+        lng: z.number().optional().describe("Longitude if known"),
+      }).optional(),
+    })).describe("Specific locations mentioned in the trip description, including addresses"),
   }),
   // Safety information
   safety_info: z.object({
@@ -63,9 +76,24 @@ function getAIProvider() {
   }
 }
 
+interface AIAnalysisResult {
+  analysis: TripAnalysis
+  responseLog: {
+    provider: string
+    model: string
+    timestamp: string
+    prompt_length: number
+    response_time_ms?: number
+    raw_response?: unknown
+    error?: string
+  }
+}
+
 export async function analyzeTripAndGenerateSafetyInfo(
   tripDescription: string
-): Promise<TripAnalysis> {
+): Promise<AIAnalysisResult> {
+  const startTime = Date.now()
+  const provider = process.env.AI_PROVIDER || 'openai'
   const model = getAIProvider()
   
   const prompt = `You are an expert outdoor safety consultant. Analyze this trip description and extract key details, then generate comprehensive safety information.
@@ -77,9 +105,28 @@ First, carefully extract any trip details mentioned:
 - Start/end dates (if mentioned - convert to ISO format like "2024-01-15")
 - Duration in days (if mentioned or can be calculated)
 - Emergency contact person (if mentioned)
-- Activities planned (extract all mentioned)
+- Activities planned (extract all mentioned with their types and details)
+  * For each activity, identify:
+    - Type: walking, hiking, biking, driving, camping, climbing, swimming, kayaking, etc.
+    - Name: specific activity description (e.g., "Half Dome day hike", "Mountain biking at Slickrock Trail")
+    - Difficulty: easy, moderate, difficult, extreme (if mentioned)
 - Group size/number of people (if mentioned)
 - Experience level of participants (if mentioned)
+
+IMPORTANT: Extract ALL specific locations and addresses mentioned in the trip description:
+- Include every park, trail, landmark, campground, city, wilderness area, viewpoint, lake, etc.
+- ESPECIALLY look for and extract any street addresses, hotels, parking areas, trailheads, visitor centers
+- For each location, identify its type (park, trail, campground, landmark, city, wilderness_area, address, hotel, parking, trailhead, visitor_center, other)
+- If a full street address is mentioned, include it in the address field
+- For well-known locations, include approximate GPS coordinates (lat/lng)
+- Examples of locations to extract:
+  * "Yosemite National Park" → {name: "Yosemite National Park", type: "park", coordinates: {lat: 37.8651, lng: -119.5383}}
+  * "Half Dome Trail" → {name: "Half Dome Trail", type: "trail", coordinates: {lat: 37.7459, lng: -119.5332}}
+  * "123 Main Street, Yosemite, CA" → {name: "123 Main Street", type: "address", address: "123 Main Street, Yosemite, CA"}
+  * "Yosemite Valley Lodge" → {name: "Yosemite Valley Lodge", type: "hotel", address: "9006 Yosemite Lodge Drive, Yosemite Valley, CA 95389"}
+  * "Cathedral Beach Picnic Area parking" → {name: "Cathedral Beach Picnic Area", type: "parking"}
+  * "Happy Isles Trailhead" → {name: "Happy Isles Trailhead", type: "trailhead"}
+- If you don't know exact coordinates for a location, still include it but omit the coordinates field - we will geocode it later
 
 Then generate comprehensive safety information:
 - Emergency numbers for the specific location
@@ -110,12 +157,34 @@ If dates or emergency contacts aren't mentioned, leave those fields empty - don'
       temperature: 0.7,
     })
 
-    return result.object
+    const responseTime = Date.now() - startTime
+
+    return {
+      analysis: result.object,
+      responseLog: {
+        provider,
+        model: provider === 'openai' ? 'gpt-4o-mini' : 'claude-3-5-sonnet-20241022',
+        timestamp: new Date().toISOString(),
+        prompt_length: prompt.length,
+        response_time_ms: responseTime,
+        raw_response: result,
+      }
+    }
   } catch (error) {
     console.error('AI generation failed:', error)
     
     // Fallback to mock data if AI fails
-    return getFallbackTripAnalysis(tripDescription)
+    return {
+      analysis: getFallbackTripAnalysis(tripDescription),
+      responseLog: {
+        provider: 'fallback',
+        model: 'none',
+        timestamp: new Date().toISOString(),
+        prompt_length: prompt.length,
+        response_time_ms: Date.now() - startTime,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
   }
 }
 
@@ -128,7 +197,11 @@ function getFallbackTripAnalysis(tripDescription: string): TripAnalysis {
   return {
     trip_details: {
       location_name: location,
-      activities: ['adventure activities'], // Generic fallback
+      activities: [{ type: 'other', name: 'Adventure activities', difficulty: undefined }], // Generic fallback
+      locations: location ? [{
+        name: location,
+        type: 'other',
+      }] : [],
       // Leave dates and emergency contact empty since they weren't extracted
     },
     safety_info: {

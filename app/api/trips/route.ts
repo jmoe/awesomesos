@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateShareId } from '@/lib/utils'
 import { analyzeTripAndGenerateSafetyInfo } from '@/lib/ai'
+import { geocodeLocations } from '@/lib/geocoding'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze trip and generate safety info using AI
-    const analysis = await analyzeTripAndGenerateSafetyInfo(tripDescription.trim())
+    const aiResult = await analyzeTripAndGenerateSafetyInfo(tripDescription.trim())
+    const { analysis, responseLog } = aiResult
+
+    // Geocode locations that don't have coordinates
+    const geocodedLocations = await geocodeLocations(analysis.trip_details.locations || [])
 
     // Extract dates with fallbacks
     const now = new Date()
@@ -36,6 +41,7 @@ export async function POST(request: NextRequest) {
       activities: analysis.trip_details.activities,
       group_size: analysis.trip_details.group_size,
       experience_level: analysis.trip_details.experience_level,
+      locations: geocodedLocations,
     }
 
     // Create Supabase client
@@ -55,6 +61,7 @@ export async function POST(request: NextRequest) {
         emergency_contact: analysis.trip_details.emergency_contact || null,
         safety_info: analysis.safety_info,
         trip_data: tripData,
+        ai_response_log: responseLog,
       })
       .select()
       .single()
