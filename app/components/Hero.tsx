@@ -6,9 +6,7 @@ export function Hero() {
   return (
     <section className="bg-gradient-to-br from-sos-blue to-sos-dark text-white">
       <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl md:text-6xl font-bold mb-4">
-          🤩 AwesomeSOS 🆘
-        </h1>
+        <h1 className="text-5xl md:text-6xl font-bold mb-4">AwesomeS🤩S</h1>
         <p className="text-2xl md:text-3xl font-medium mb-6 text-yellow-300">
           When life goes sideways we got your back!
         </p>
