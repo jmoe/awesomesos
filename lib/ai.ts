@@ -23,6 +23,8 @@ const TripAnalysisSchema = z.object({
       name: z.string().describe("Location name (e.g., 'Yosemite National Park', 'Half Dome Trail')"),
       type: z.string().describe("Type of location - common types include: park, trail, campground, landmark, city, wilderness_area, address, hotel, parking, trailhead, visitor_center, lake, river, beach, mountain, forest, desert, canyon, waterfall, hot_spring, cave, island, glacier, meadow, valley, summit, pass, road, viewpoint, picnic_area, boat_launch, marina, resort, lodge, hut, shelter, ranger_station, rest_area, overlook, bridge, dam, reservoir, spring, creek, wetland, marsh, estuary, bay, cove, peninsula, cliff, gorge, ridge, plateau, but any location type is allowed"),
       address: z.string().optional().describe("Full street address if mentioned (e.g., '123 Main St, Yosemite, CA 95389')"),
+      city: z.string().optional().describe("City name if mentioned or known"),
+      state: z.string().optional().describe("State/province code (e.g., 'CA', 'OR', 'WA') if mentioned or known"),
       coordinates: z.object({
         lat: z.number().optional().describe("Latitude if known"),
         lng: z.number().optional().describe("Longitude if known"),
@@ -57,8 +59,8 @@ type TripAnalysis = z.infer<typeof TripAnalysisSchema>
 // Schema for URL content preprocessing
 const URLContentSchema = z.object({
   summary: z.string().describe("A descriptive but concise summary of the trip/event (2-4 sentences) that sounds natural"),
+  trip_type: z.enum(['trail', 'event', 'itinerary', 'blog_post', 'guide', 'other']).describe("Type of content - must be one of these exact values"),
   optimized_content: z.string().describe("Detailed content with all trip-relevant information for safety plan generation"),
-  trip_type: z.enum(['trail', 'event', 'itinerary', 'blog_post', 'guide', 'other']).describe("Type of content"),
 })
 
 // Get AI provider based on environment variable
@@ -79,7 +81,7 @@ function getAIProvider() {
       if (!process.env.OPENAI_API_KEY) {
         throw new Error('OPENAI_API_KEY is required when using OpenAI provider')
       }
-      return openai('gpt-4o-mini')
+      return openai('gpt-4o')
   }
 }
 
@@ -109,7 +111,9 @@ Note: The description below might be from a webpage, blog post, or event listing
 
 Trip Description: ${tripDescription}
 
-First, carefully extract any trip details mentioned:
+First, identify the general geographic area of the trip (state, region, park system) to help with location extraction.
+
+Then, carefully extract any trip details mentioned:
 - Location/destination (required)
 - Start/end dates (if mentioned - convert to ISO format like "2024-01-15")
 - Duration in days (if mentioned or can be calculated)
@@ -127,15 +131,37 @@ IMPORTANT: Extract ALL specific locations and addresses mentioned in the trip de
 - ESPECIALLY look for and extract any street addresses, hotels, parking areas, trailheads, visitor centers
 - For each location, identify its type (park, trail, campground, landmark, city, wilderness_area, address, hotel, parking, trailhead, visitor_center, other)
 - If a full street address is mentioned, include it in the address field
+- Extract city and state when mentioned or when you know them (e.g., Yosemite is in CA)
+
+CRITICAL: For better geocoding accuracy, ALWAYS try to infer and include the city and/or state for each location:
+- If a trail is in a national park, include the park name and state in the location name
+- If multiple locations are mentioned in the same area, infer they share the same city/state
+- Use context clues from the description to determine the general area
+- Examples:
+  * "Half Dome Trail" → name: "Half Dome Trail, Yosemite National Park, CA"
+  * "Angels Landing" (when Zion is mentioned) → name: "Angels Landing, Zion National Park, UT"
+  * "Bright Angel Trail" (when Grand Canyon is mentioned) → name: "Bright Angel Trail, Grand Canyon, AZ"
+  * "Paradise Loop Trail" (when Mount Rainier is mentioned) → name: "Paradise Loop Trail, Mount Rainier National Park, WA"
+  * "Emerald Lake Trail" (when Rocky Mountain NP is mentioned) → name: "Emerald Lake Trail, Rocky Mountain National Park, CO"
+
 - For well-known locations, include approximate GPS coordinates (lat/lng)
 - Examples of locations to extract:
-  * "Yosemite National Park" → {name: "Yosemite National Park", type: "park", coordinates: {lat: 37.8651, lng: -119.5383}}
-  * "Half Dome Trail" → {name: "Half Dome Trail", type: "trail", coordinates: {lat: 37.7459, lng: -119.5332}}
-  * "123 Main Street, Yosemite, CA" → {name: "123 Main Street", type: "address", address: "123 Main Street, Yosemite, CA"}
-  * "Yosemite Valley Lodge" → {name: "Yosemite Valley Lodge", type: "hotel", address: "9006 Yosemite Lodge Drive, Yosemite Valley, CA 95389"}
-  * "Cathedral Beach Picnic Area parking" → {name: "Cathedral Beach Picnic Area", type: "parking"}
-  * "Happy Isles Trailhead" → {name: "Happy Isles Trailhead", type: "trailhead"}
+  * "Yosemite National Park" → {name: "Yosemite National Park, CA", type: "park", state: "CA", coordinates: {lat: 37.8651, lng: -119.5383}}
+  * "Half Dome Trail" → {name: "Half Dome Trail, Yosemite National Park, CA", type: "trail", state: "CA", coordinates: {lat: 37.7459, lng: -119.5332}}
+  * "123 Main Street, Yosemite, CA" → {name: "123 Main Street, Yosemite, CA", type: "address", city: "Yosemite", state: "CA", address: "123 Main Street, Yosemite, CA"}
+  * "Yosemite Valley Lodge" → {name: "Yosemite Valley Lodge, Yosemite Valley, CA", type: "hotel", city: "Yosemite Valley", state: "CA", address: "9006 Yosemite Lodge Drive, Yosemite Valley, CA 95389"}
+  * "Moab, Utah" → {name: "Moab, UT", type: "city", city: "Moab", state: "UT"}
+  * "Cathedral Beach Picnic Area parking" → {name: "Cathedral Beach Picnic Area, Yosemite National Park, CA", type: "parking", state: "CA"}
+  * "Happy Isles Trailhead" → {name: "Happy Isles Trailhead, Yosemite Valley, CA", type: "trailhead", state: "CA"}
 - If you don't know exact coordinates for a location, still include it but omit the coordinates field - we will geocode it later
+
+LOCATION NAME ENRICHMENT RULES:
+1. Always include the parent location (park, city, or region) in the name field for better geocoding
+2. If a trip mentions "We're going to Yosemite" and later mentions "Half Dome", the location should be "Half Dome Trail, Yosemite National Park, CA"
+3. For any trail/campground/landmark within a park, always append the park name and state
+4. For locations in cities, append the city and state
+5. Use common abbreviations for states (CA, OR, WA, UT, AZ, CO, etc.)
+6. This enrichment should be in the 'name' field itself, not just in separate city/state fields
 
 Then, SEPARATELY from trip_details, generate comprehensive safety information:
 - Emergency numbers for the specific location
@@ -178,7 +204,7 @@ These should be SEPARATE top-level fields, NOT nested inside each other.`
       analysis: result.object,
       responseLog: {
         provider,
-        model: provider === 'openai' ? 'gpt-4o-mini' : 'claude-3-5-sonnet-20241022',
+        model: provider === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet-20241022',
         timestamp: new Date().toISOString(),
         prompt_length: prompt.length,
         response_time_ms: responseTime,
@@ -284,7 +310,8 @@ export async function preprocessUrlContent(
   const model = getAIProvider()
   
   const isAllTrails = url?.includes('alltrails.com')
-  const isTrailWebsite = url && (isAllTrails || url.includes('hikingproject.com') || url.includes('trailforks.com'))
+  const isOuterSpatial = url?.includes('outerspatial.com')
+  const isTrailWebsite = url && (isAllTrails || isOuterSpatial || url.includes('hikingproject.com') || url.includes('trailforks.com'))
   
   const prompt = `You are helping extract trip/adventure information from a webpage. 
 
@@ -301,8 +328,31 @@ Please analyze this content and:
    ${isTrailWebsite ? 
      'For trail websites, format like: "I\'m planning to hike [trail name] in [location]. It\'s a [distance] [difficulty] [trail type] with [elevation gain] that typically takes [duration]. [Add one interesting feature or characteristic]."' : 
      'This should read like something a user would naturally type when describing their plans to a friend. Include key details that make the trip unique.'}
+   
+   IMPORTANT: The summary must NOT contain any URLs or look like a URL. Write in natural language only.
+   
+   DO NOT return the URL itself as the summary. 
+   DO NOT return text that starts with "http://" or "https://".
+   DO NOT return text that looks like a web address.
+   
+   Example BAD summaries (never return these):
+   - "https://www.outerspatial.com/outings/buckeye-lake-marie-loop"
+   - "www.alltrails.com/trail/us/oregon/riley-ranch-trails"
+   - "Check out this trail at example.com"
+   
+   Example GOOD summaries:
+   - "I'm planning to hike the Buckeye Lake Marie Loop, a 5.2 mile moderate loop trail with 800ft elevation gain. It features beautiful lake views and typically takes 2-3 hours to complete."
+   - "I want to explore Riley Ranch Trails in Oregon. It's a 7 mile network of trails suitable for hiking and mountain biking with varied terrain."
 
-2. Extract and optimize the content to focus ONLY on trip-relevant information:
+2. Identify the trip_type based on the content:
+   - "trail" for trail/hiking websites
+   - "event" for organized outdoor events
+   - "itinerary" for trip plans
+   - "blog_post" for personal trip stories
+   - "guide" for how-to guides
+   - "other" for anything else
+
+3. Extract and optimize the content to focus ONLY on trip-relevant information:
    ${isTrailWebsite ? `
    For trail websites, prioritize:
    - Trail name and exact location
@@ -336,13 +386,19 @@ Remove all irrelevant content like:
 - Generic website footer content
 - Unrelated articles or content
 
-The optimized content should be comprehensive and include ALL relevant details that would be useful for generating a safety plan. Don't over-summarize - keep important details like specific locations, features, warnings, conditions, etc. This will be used behind the scenes for safety planning, so more detail is better.`
+The optimized content should be comprehensive and include ALL relevant details that would be useful for generating a safety plan. Don't over-summarize - keep important details like specific locations, features, warnings, conditions, etc. This will be used behind the scenes for safety planning, so more detail is better.
+
+IMPORTANT: Your response MUST include all three fields:
+1. summary - The natural language summary
+2. trip_type - One of: trail, event, itinerary, blog_post, guide, other
+3. optimized_content - The detailed extracted information`
 
   try {
     const result = await generateObject({
       model,
       schema: URLContentSchema,
       prompt,
+      temperature: 0.7,
     })
 
     return {
@@ -351,11 +407,33 @@ The optimized content should be comprehensive and include ALL relevant details t
     }
   } catch (error) {
     console.error('URL content preprocessing failed:', error)
-    // Fallback to basic extraction
-    return {
-      summary: title ? `Trip information from: ${title}` : 'Trip information from webpage',
-      optimizedContent: content.substring(0, 2000) + '...',
-      error: 'Failed to optimize content',
+    
+    // Try a simpler approach without the enum field
+    try {
+      const simpleSchema = z.object({
+        summary: z.string(),
+        optimized_content: z.string(),
+      })
+      
+      const simpleResult = await generateObject({
+        model,
+        schema: simpleSchema,
+        prompt: prompt.replace('IMPORTANT: Your response MUST include all three fields:', 'Your response must include:').replace('2. trip_type - One of: trail, event, itinerary, blog_post, guide, other\n3. optimized_content', '2. optimized_content'),
+        temperature: 0.7,
+      })
+      
+      return {
+        summary: simpleResult.object.summary,
+        optimizedContent: simpleResult.object.optimized_content,
+      }
+    } catch (retryError) {
+      console.error('Simple schema also failed:', retryError)
+      // Final fallback to basic extraction
+      return {
+        summary: title ? `Trip information from: ${title}` : 'Trip information from webpage',
+        optimizedContent: content.substring(0, 2000) + '...',
+        error: 'Failed to optimize content',
+      }
     }
   }
 }

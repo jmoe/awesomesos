@@ -44,6 +44,13 @@ AI-powered adventure safety service that helps people stay safe on their adventu
      # Or use Claude instead:
      # AI_PROVIDER=anthropic
      # ANTHROPIC_API_KEY=your_anthropic_api_key
+     
+     # Optional: Better geocoding (improves map accuracy)
+     # Get free Mapbox token at: https://account.mapbox.com/
+     # MAPBOX_ACCESS_TOKEN=your_mapbox_token
+     
+     # Or use Google Maps (enable Geocoding API)
+     # GOOGLE_MAPS_API_KEY=your_google_maps_key
      ```
 
 4. Run the development server:

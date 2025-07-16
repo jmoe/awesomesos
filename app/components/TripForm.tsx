@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { isValidUrl, fetchUrlContent } from '@/lib/url-utils'
 
@@ -11,36 +11,94 @@ export function TripForm() {
   const [optimizedContent, setOptimizedContent] = useState<string | null>(null)
   const [fetchingUrl, setFetchingUrl] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null)
+  
+  // Track if we're setting the value programmatically
+  const isProgrammaticChange = useRef(false)
+  // Track the last processed URL to prevent re-processing
+  const lastProcessedUrl = useRef<string | null>(null)
 
-  // Check for URL when text changes
-  useEffect(() => {
-    const checkAndFetchUrl = async () => {
-      const trimmedText = tripDescription.trim()
-      
-      // Only process if it's a valid URL and we're not already fetching
-      if (isValidUrl(trimmedText) && !fetchingUrl) {
-        setFetchingUrl(true)
-        setUrlError(null)
-        
-        const result = await fetchUrlContent(trimmedText)
-        
-        if (result.error) {
-          setUrlError(result.error)
-          setFetchingUrl(false)
-        } else {
-          // Use the AI-generated summary as the trip description
-          setTripDescription(result.content)
-          // Store the detailed content for safety plan generation
-          setOptimizedContent(result.optimizedContent || null)
-          setFetchingUrl(false)
-        }
-      }
+  const handleTextChange = async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value
+    setTripDescription(newValue)
+    setUrlError(null)
+    
+    // Skip URL detection if this is a programmatic change
+    if (isProgrammaticChange.current) {
+      console.log('[TripForm] Skipping URL check - programmatic change')
+      isProgrammaticChange.current = false
+      return
     }
     
-    // Debounce the URL check
-    const timer = setTimeout(checkAndFetchUrl, 500)
-    return () => clearTimeout(timer)
-  }, [tripDescription, fetchingUrl])
+    // Check if the new value is a URL
+    const trimmedValue = newValue.trim()
+    
+    // If it's not a URL, clear our tracking
+    if (!isValidUrl(trimmedValue)) {
+      console.log('[TripForm] Not a valid URL, clearing tracking')
+      lastProcessedUrl.current = null
+      setOptimizedContent(null)
+      setSourceUrl(null)
+      return
+    }
+    
+    console.log('[TripForm] Valid URL detected:', trimmedValue)
+    
+    // If it's the same URL we just processed, skip
+    if (trimmedValue === lastProcessedUrl.current) {
+      console.log('[TripForm] Skipping - same URL already processed')
+      return
+    }
+    
+    // If we're already fetching, skip
+    if (fetchingUrl) {
+      console.log('[TripForm] Skipping - already fetching')
+      return
+    }
+    
+    // New URL detected
+    console.log('[TripForm] New URL detected, fetching:', trimmedValue)
+    setFetchingUrl(true)
+    lastProcessedUrl.current = trimmedValue
+    
+    try {
+      const result = await fetchUrlContent(trimmedValue)
+      
+      if (result.error) {
+        console.error('[TripForm] Fetch error:', result.error)
+        setUrlError(result.error)
+        lastProcessedUrl.current = null // Allow retry
+      } else {
+        console.log('[TripForm] Fetch success, setting content programmatically')
+        
+        // Safety check: ensure we're not setting a URL as content
+        if (result.content && isValidUrl(result.content.trim())) {
+          console.error('[TripForm] SAFETY: Received URL as content, using fallback')
+          const fallbackContent = result.title 
+            ? `Trip information from: ${result.title}` 
+            : 'Trip information fetched from URL'
+          
+          // Mark the next change as programmatic
+          isProgrammaticChange.current = true
+          setTripDescription(fallbackContent)
+        } else {
+          // Mark the next change as programmatic
+          isProgrammaticChange.current = true
+          // Replace the URL with the fetched content
+          setTripDescription(result.content)
+        }
+        
+        setOptimizedContent(result.optimizedContent || null)
+        setSourceUrl(trimmedValue)
+      }
+    } catch (error) {
+      console.error('[TripForm] Unexpected error:', error)
+      setUrlError('Failed to fetch URL content')
+      lastProcessedUrl.current = null
+    } finally {
+      setFetchingUrl(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,7 +115,8 @@ export function TripForm() {
         },
         body: JSON.stringify({ 
           tripDescription: tripDescription.trim(),
-          optimizedContent: optimizedContent // Send the detailed content if available
+          optimizedContent: optimizedContent,
+          sourceUrl: sourceUrl
         }),
       })
 
@@ -92,14 +151,7 @@ export function TripForm() {
         <textarea
           id="tripDescription"
           value={tripDescription}
-          onChange={(e) => {
-            setTripDescription(e.target.value)
-            setUrlError(null)
-            // Clear optimized content when user manually edits
-            if (!isValidUrl(e.target.value.trim())) {
-              setOptimizedContent(null)
-            }
-          }}
+          onChange={handleTextChange}
           required
           rows={6}
           placeholder="Paste an AllTrails link (e.g., https://www.alltrails.com/trail/...) or describe your trip: I'm going on a 3-day backpacking trip..."
@@ -130,7 +182,12 @@ export function TripForm() {
               <button
                 key={i}
                 type="button"
-                onClick={() => setTripDescription(example)}
+                onClick={() => {
+                  isProgrammaticChange.current = true
+                  setTripDescription(example)
+                  setOptimizedContent(null)
+                  setSourceUrl(null)
+                }}
                 className="text-left text-sm text-sos-blue hover:text-sos-orange transition-colors"
               >
                 → {example.substring(0, 70)}...

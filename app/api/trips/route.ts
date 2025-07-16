@@ -7,7 +7,7 @@ import { geocodeLocations } from '@/lib/geocoding'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tripDescription, optimizedContent } = body
+    const { tripDescription, optimizedContent, sourceUrl } = body
 
     if (!tripDescription?.trim()) {
       return NextResponse.json(
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
         safety_info: analysis.safety_info,
         trip_data: tripData,
         ai_response_log: responseLog,
+        source_url: sourceUrl || null,
       })
       .select()
       .single()
