@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { isValidUrl, fetchUrlContent } from '@/lib/url-utils'
+import { TripGenerationLoader } from './TripGenerationLoader'
 
 export function TripForm() {
   const router = useRouter()
@@ -138,6 +139,14 @@ export function TripForm() {
     "Rock climbing at Joshua Tree with a group of 4 friends next month. We're intermediate climbers planning to tackle some classic routes over 3 days. Contact person: Dave (555) 456-7890.",
   ]
 
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <TripGenerationLoader />
+      </div>
+    )
+  }
+
   return (
     <form onSubmit={handleSubmit} className="card space-y-6">
       <div>
@@ -202,17 +211,7 @@ export function TripForm() {
         disabled={loading || fetchingUrl || !tripDescription.trim()}
         className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? (
-          <span className="flex items-center justify-center">
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Analyzing your trip and creating safety plan... 🤖
-          </span>
-        ) : (
-          'Generate My Safety Plan 🚀'
-        )}
+        Generate My Safety Plan 🚀
       </button>
     </form>
   )
