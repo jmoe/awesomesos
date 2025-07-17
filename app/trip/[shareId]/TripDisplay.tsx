@@ -60,6 +60,22 @@ interface TripDisplayProps {
           lng?: number
         }
       }>
+      itinerary?: Array<{
+        day: number
+        date?: string
+        title: string
+        activities: Array<{
+          time?: string
+          activity: string
+          duration?: string
+          location?: string
+          notes?: string
+        }>
+        meals?: string[]
+        accommodation?: string
+        driving_distance?: string
+        highlights?: string[]
+      }>
     }
     created_at: string
     view_count: number
@@ -275,6 +291,91 @@ export function TripDisplay({ trip }: TripDisplayProps) {
                       }`}>
                         {activity.difficulty}
                       </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Detailed Itinerary */}
+        {trip.trip_data.itinerary && trip.trip_data.itinerary.length > 0 && (
+          <div className="card mb-6">
+            <h3 className="text-xl font-bold mb-4">📅 Day-by-Day Itinerary</h3>
+            <div className="space-y-6">
+              {trip.trip_data.itinerary.map((day, dayIndex) => (
+                <div key={dayIndex} className="border-l-4 border-sos-blue pl-4">
+                  <div className="mb-3">
+                    <h4 className="text-lg font-bold text-sos-dark">
+                      Day {day.day}: {day.title}
+                    </h4>
+                    {day.date && (
+                      <p className="text-sm text-gray-600">{formatDate(day.date)}</p>
+                    )}
+                  </div>
+                  
+                  {/* Day's Activities */}
+                  <div className="space-y-3 mb-4">
+                    {day.activities.map((activity, actIndex) => (
+                      <div key={actIndex} className="flex gap-3 bg-gray-50 rounded-lg p-3">
+                        {activity.time && (
+                          <div className="text-sm font-semibold text-sos-blue whitespace-nowrap">
+                            {activity.time}
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <p className="font-medium">{activity.activity}</p>
+                          {activity.location && (
+                            <p className="text-sm text-gray-600">📍 {activity.location}</p>
+                          )}
+                          {activity.duration && (
+                            <p className="text-sm text-gray-600">⏱️ {activity.duration}</p>
+                          )}
+                          {activity.notes && (
+                            <p className="text-sm text-gray-700 mt-1 italic">{activity.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Additional Day Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    {day.meals && day.meals.length > 0 && (
+                      <div className="bg-orange-50 rounded-lg p-3">
+                        <p className="font-semibold text-sos-orange mb-1">🍽️ Meals</p>
+                        <ul className="list-disc list-inside text-gray-700">
+                          {day.meals.map((meal, i) => (
+                            <li key={i}>{meal}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {day.accommodation && (
+                      <div className="bg-blue-50 rounded-lg p-3">
+                        <p className="font-semibold text-sos-blue mb-1">🏨 Accommodation</p>
+                        <p className="text-gray-700">{day.accommodation}</p>
+                      </div>
+                    )}
+                    
+                    {day.driving_distance && (
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="font-semibold text-gray-700 mb-1">🚗 Driving</p>
+                        <p className="text-gray-700">{day.driving_distance}</p>
+                      </div>
+                    )}
+                    
+                    {day.highlights && day.highlights.length > 0 && (
+                      <div className="bg-yellow-50 rounded-lg p-3">
+                        <p className="font-semibold text-yellow-800 mb-1">⭐ Highlights</p>
+                        <ul className="list-disc list-inside text-gray-700">
+                          {day.highlights.map((highlight, i) => (
+                            <li key={i}>{highlight}</li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -30,6 +30,22 @@ const TripAnalysisSchema = z.object({
         lng: z.number().optional().describe("Longitude if known"),
       }).optional(),
     })).describe("Specific locations mentioned in the trip description, including addresses"),
+    itinerary: z.array(z.object({
+      day: z.number().describe("Day number of the trip (1, 2, 3, etc.)"),
+      date: z.string().optional().describe("ISO date string for this day if dates are known"),
+      title: z.string().describe("Brief title for the day (e.g., 'Arrival & Setup', 'Summit Day', 'Exploring the Valley')"),
+      activities: z.array(z.object({
+        time: z.string().optional().describe("Suggested time for the activity (e.g., '8:00 AM', '2:00 PM', 'Morning', 'Afternoon')"),
+        activity: z.string().describe("Description of the activity"),
+        duration: z.string().optional().describe("Estimated duration (e.g., '2 hours', '30 minutes', 'All day')"),
+        location: z.string().optional().describe("Specific location for this activity"),
+        notes: z.string().optional().describe("Important notes, tips, or considerations for this activity"),
+      })).describe("List of activities for this day in chronological order"),
+      meals: z.array(z.string()).optional().describe("Suggested meal plan or dining locations for the day"),
+      accommodation: z.string().optional().describe("Where to stay this night (campground, hotel, etc.)"),
+      driving_distance: z.string().optional().describe("Total driving distance for the day if applicable"),
+      highlights: z.array(z.string()).optional().describe("Key highlights or must-see items for the day"),
+    })).describe("Day-by-day itinerary for the trip"),
   }),
   // Safety information
   safety_info: z.object({
@@ -130,6 +146,7 @@ Then, carefully extract any trip details mentioned:
     - Difficulty: easy, moderate, difficult, extreme (if mentioned)
 - Group size/number of people (if mentioned)
 - Experience level of participants (if mentioned)
+- REQUIRED: Generate a detailed itinerary (see DETAILED ITINERARY GENERATION section below)
 
 IMPORTANT: Extract ALL specific locations and addresses mentioned in the trip description:
 - Include every park, trail, landmark, campground, city, wilderness area, viewpoint, lake, etc.
@@ -170,6 +187,43 @@ LOCATION NAME ENRICHMENT RULES:
 5. Use common abbreviations for states (CA, OR, WA, UT, AZ, CO, etc.)
 6. This enrichment should be in the 'name' field itself, not just in separate city/state fields
 
+DETAILED ITINERARY GENERATION:
+Create a comprehensive day-by-day itinerary based on the trip description. Even if the user provides minimal details, use your knowledge to create a logical, detailed itinerary that makes sense for the destination and activities mentioned.
+
+Guidelines for itinerary creation:
+1. If specific dates are provided, use them. Otherwise, create a logical day-by-day plan
+2. For each day, provide:
+   - A descriptive title (e.g., "Arrival & Base Camp Setup", "Summit Attempt", "Waterfall Exploration")
+   - A chronological list of activities with suggested times
+   - Estimated durations for activities when relevant
+   - Specific locations for each activity
+   - Helpful notes or tips
+   - Meal suggestions or dining locations
+   - Accommodation details if mentioned
+   - Daily driving distances for road trips
+   - Key highlights not to miss
+
+3. Make educated guesses based on:
+   - Common trip patterns for the destination
+   - Typical timing for outdoor activities (early starts for hikes, etc.)
+   - Logical progression of activities
+   - Standard duration for common activities
+   - Popular attractions or points of interest in the area
+
+4. Examples of good itinerary entries:
+   - Day 1: "Arrival & Valley Exploration"
+     * 8:00 AM - Pick up rental car at SFO
+     * 10:00 AM - Drive to Yosemite (4 hours, 195 miles)
+     * 2:00 PM - Check in at Yosemite Valley Lodge
+     * 3:00 PM - Visit Yosemite Visitor Center (30 minutes)
+     * 4:00 PM - Easy walk to Lower Yosemite Falls (1.2 miles, 1 hour)
+     * 6:00 PM - Dinner at Mountain Room Restaurant
+     * 8:00 PM - Sunset photography at Glacier Point Road
+
+5. If the trip description is vague (e.g., "weekend in Yosemite"), create a reasonable 2-3 day itinerary hitting the major highlights
+6. For activities like "hiking Half Dome", expand into a full day plan with early start, breaks, summit time, return schedule
+7. Include practical details like parking locations, permit requirements, water refill points
+
 Then, AS A SECOND REQUIRED FIELD called "safety_info", generate comprehensive safety information:
 - Emergency numbers for the specific location
 - Weather considerations for the area and time
@@ -193,7 +247,7 @@ If dates or emergency contacts aren't mentioned, leave those fields empty - don'
 
 CRITICAL RESPONSE STRUCTURE - BOTH FIELDS ARE REQUIRED:
 The response MUST contain EXACTLY these two top-level fields:
-1. trip_details (containing location_name, activities, locations, etc.)
+1. trip_details (containing location_name, activities, locations, AND itinerary)
 2. safety_info (containing emergency_numbers, weather_summary, key_risks, etc.)
 
 BOTH fields are REQUIRED. The response will FAIL validation if either field is missing.
@@ -258,6 +312,15 @@ function getFallbackTripAnalysis(tripDescription: string): TripAnalysis {
         name: location,
         type: 'other',
       }] : [],
+      itinerary: [{
+        day: 1,
+        title: 'Adventure Day',
+        activities: [{
+          time: 'Morning',
+          activity: 'Start your adventure',
+          notes: 'Check weather conditions before heading out',
+        }],
+      }],
       // Leave dates and emergency contact empty since they weren't extracted
     },
     safety_info: {
