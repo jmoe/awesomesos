@@ -123,7 +123,13 @@ export async function analyzeTripAndGenerateSafetyInfo(
   
   const prompt = `You are an expert outdoor safety consultant. Analyze this trip description and extract key details, then generate comprehensive safety information.
 
-IMPORTANT: Your response MUST include BOTH "trip_details" AND "safety_info" as separate top-level fields.
+CRITICAL: Your response MUST include BOTH "trip_details" AND "safety_info" as separate top-level fields. If you do not include BOTH fields, the response will fail.
+
+The response structure MUST be:
+{
+  "trip_details": { ... all trip information ... },
+  "safety_info": { ... all safety information ... }
+}
 
 Note: The description below might be from a webpage, blog post, or event listing. Extract relevant trip information even if the format is unconventional.
 
@@ -224,7 +230,8 @@ Guidelines for itinerary creation:
 6. For activities like "hiking Half Dome", expand into a full day plan with early start, breaks, summit time, return schedule
 7. Include practical details like parking locations, permit requirements, water refill points
 
-Then, AS A SECOND REQUIRED FIELD called "safety_info", generate comprehensive safety information:
+NOW GENERATE THE SECOND REQUIRED FIELD - "safety_info":
+This field is MANDATORY and MUST be included at the same level as "trip_details". Generate comprehensive safety information:
 - Emergency numbers for the specific location
 - Weather considerations for the area and time
 - Location and activity-specific risks
@@ -257,7 +264,9 @@ Example structure:
 {
   "trip_details": { ... },
   "safety_info": { ... }
-}`
+}
+
+FINAL REMINDER: You MUST include BOTH "trip_details" AND "safety_info" fields in your response. Do not omit the safety_info field!`
 
   try {
     const result = await generateObject({
@@ -268,6 +277,16 @@ Example structure:
     })
 
     const responseTime = Date.now() - startTime
+
+    // Validate that both required fields are present
+    if (!result.object.trip_details || !result.object.safety_info) {
+      console.error('AI response missing required fields:', {
+        has_trip_details: !!result.object.trip_details,
+        has_safety_info: !!result.object.safety_info,
+        response: JSON.stringify(result.object)
+      })
+      throw new Error('AI did not generate both required fields')
+    }
 
     return {
       analysis: result.object,
