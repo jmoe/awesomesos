@@ -107,6 +107,8 @@ export async function analyzeTripAndGenerateSafetyInfo(
   
   const prompt = `You are an expert outdoor safety consultant. Analyze this trip description and extract key details, then generate comprehensive safety information.
 
+IMPORTANT: Your response MUST include BOTH "trip_details" AND "safety_info" as separate top-level fields.
+
 Note: The description below might be from a webpage, blog post, or event listing. Extract relevant trip information even if the format is unconventional.
 
 Trip Description: ${tripDescription}
@@ -168,7 +170,7 @@ LOCATION NAME ENRICHMENT RULES:
 5. Use common abbreviations for states (CA, OR, WA, UT, AZ, CO, etc.)
 6. This enrichment should be in the 'name' field itself, not just in separate city/state fields
 
-Then, SEPARATELY from trip_details, generate comprehensive safety information:
+Then, AS A SECOND REQUIRED FIELD called "safety_info", generate comprehensive safety information:
 - Emergency numbers for the specific location
 - Weather considerations for the area and time
 - Location and activity-specific risks
@@ -189,11 +191,19 @@ Guidelines:
 
 If dates or emergency contacts aren't mentioned, leave those fields empty - don't make them up.
 
-IMPORTANT: The response must have two top-level fields:
+CRITICAL RESPONSE STRUCTURE - BOTH FIELDS ARE REQUIRED:
+The response MUST contain EXACTLY these two top-level fields:
 1. trip_details (containing location_name, activities, locations, etc.)
 2. safety_info (containing emergency_numbers, weather_summary, key_risks, etc.)
 
-These should be SEPARATE top-level fields, NOT nested inside each other.`
+BOTH fields are REQUIRED. The response will FAIL validation if either field is missing.
+These should be SEPARATE top-level fields at the root level, NOT nested inside each other.
+
+Example structure:
+{
+  "trip_details": { ... },
+  "safety_info": { ... }
+}`
 
   try {
     const result = await generateObject({
