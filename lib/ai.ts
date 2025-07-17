@@ -111,6 +111,7 @@ interface AIAnalysisResult {
     response_time_ms?: number
     raw_response?: unknown
     error?: string
+    retries?: number
   }
 }
 
@@ -123,13 +124,19 @@ export async function analyzeTripAndGenerateSafetyInfo(
   
   const prompt = `You are an expert outdoor safety consultant. Analyze this trip description and extract key details, then generate comprehensive safety information.
 
-CRITICAL: Your response MUST include BOTH "trip_details" AND "safety_info" as separate top-level fields. If you do not include BOTH fields, the response will fail.
+CRITICAL REQUIREMENT: Your response MUST include EXACTLY TWO top-level fields:
+1. "trip_details" - containing all trip information
+2. "safety_info" - containing all safety information
 
-The response structure MUST be:
+⚠️ WARNING: If you do not include BOTH fields, the response will be REJECTED and FAIL VALIDATION.
+
+The response structure MUST be EXACTLY:
 {
   "trip_details": { ... all trip information ... },
   "safety_info": { ... all safety information ... }
 }
+
+DO NOT omit the safety_info field. DO NOT nest one field inside the other. BOTH fields are REQUIRED at the top level.
 
 Note: The description below might be from a webpage, blog post, or event listing. Extract relevant trip information even if the format is unconventional.
 
@@ -252,67 +259,105 @@ Guidelines:
 
 If dates or emergency contacts aren't mentioned, leave those fields empty - don't make them up.
 
-CRITICAL RESPONSE STRUCTURE - BOTH FIELDS ARE REQUIRED:
-The response MUST contain EXACTLY these two top-level fields:
-1. trip_details (containing location_name, activities, locations, AND itinerary)
-2. safety_info (containing emergency_numbers, weather_summary, key_risks, etc.)
+⚠️ CRITICAL RESPONSE REQUIREMENTS - READ CAREFULLY:
+You MUST generate a response with EXACTLY TWO top-level fields:
 
-BOTH fields are REQUIRED. The response will FAIL validation if either field is missing.
-These should be SEPARATE top-level fields at the root level, NOT nested inside each other.
+1. "trip_details" - REQUIRED field containing:
+   - location_name, activities, locations, itinerary, etc.
+   
+2. "safety_info" - REQUIRED field containing:
+   - emergency_numbers, weather_summary, key_risks, tips, packing_list, etc.
 
-Example structure:
+❌ COMMON MISTAKES TO AVOID:
+- DO NOT generate only trip_details without safety_info
+- DO NOT nest safety_info inside trip_details
+- DO NOT forget to include the safety_info field
+
+✅ CORRECT STRUCTURE:
 {
-  "trip_details": { ... },
-  "safety_info": { ... }
+  "trip_details": { ... complete trip information ... },
+  "safety_info": { ... complete safety information ... }
 }
 
-FINAL REMINDER: You MUST include BOTH "trip_details" AND "safety_info" fields in your response. Do not omit the safety_info field!`
+🚨 VALIDATION WILL FAIL if you don't include BOTH fields at the top level!
 
-  try {
-    const result = await generateObject({
-      model,
-      schema: TripAnalysisSchema,
-      prompt,
-      temperature: 0.7,
-    })
+FINAL CHECK: Before responding, verify your response has BOTH "trip_details" AND "safety_info" as separate top-level fields!`
 
-    const responseTime = Date.now() - startTime
-
-    // Validate that both required fields are present
-    if (!result.object.trip_details || !result.object.safety_info) {
-      console.error('AI response missing required fields:', {
-        has_trip_details: !!result.object.trip_details,
-        has_safety_info: !!result.object.safety_info,
-        response: JSON.stringify(result.object)
+  let retries = 0
+  const maxRetries = 2
+  
+  while (retries <= maxRetries) {
+    try {
+      const result = await generateObject({
+        model,
+        schema: TripAnalysisSchema,
+        prompt: retries > 0 ? 
+          `${prompt}\n\nIMPORTANT: Previous attempt failed because safety_info was missing. You MUST include BOTH trip_details AND safety_info fields in your response!` : 
+          prompt,
+        temperature: 0.7,
       })
-      throw new Error('AI did not generate both required fields')
-    }
 
-    return {
-      analysis: result.object,
-      responseLog: {
-        provider,
-        model: provider === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet-20241022',
-        timestamp: new Date().toISOString(),
-        prompt_length: prompt.length,
-        response_time_ms: responseTime,
-        raw_response: result,
+      const responseTime = Date.now() - startTime
+
+      // Validate that both required fields are present
+      if (!result.object.trip_details || !result.object.safety_info) {
+        console.error('AI response missing required fields:', {
+          has_trip_details: !!result.object.trip_details,
+          has_safety_info: !!result.object.safety_info,
+          response: JSON.stringify(result.object),
+          attempt: retries + 1
+        })
+        throw new Error('AI did not generate both required fields')
+      }
+
+      return {
+        analysis: result.object,
+        responseLog: {
+          provider,
+          model: provider === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet-20241022',
+          timestamp: new Date().toISOString(),
+          prompt_length: prompt.length,
+          response_time_ms: responseTime,
+          raw_response: result,
+          retries: retries
+        }
+      }
+    } catch (error) {
+      console.error(`AI generation failed (attempt ${retries + 1}/${maxRetries + 1}):`, error)
+      
+      if (retries < maxRetries) {
+        retries++
+        console.log(`Retrying AI generation (attempt ${retries + 1}/${maxRetries + 1})...`)
+        continue
+      }
+      
+      // Fallback to mock data if all retries fail
+      return {
+        analysis: getFallbackTripAnalysis(tripDescription),
+        responseLog: {
+          provider: 'fallback',
+          model: 'none',
+          timestamp: new Date().toISOString(),
+          prompt_length: prompt.length,
+          response_time_ms: Date.now() - startTime,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          retries: retries
+        }
       }
     }
-  } catch (error) {
-    console.error('AI generation failed:', error)
-    
-    // Fallback to mock data if AI fails
-    return {
-      analysis: getFallbackTripAnalysis(tripDescription),
-      responseLog: {
-        provider: 'fallback',
-        model: 'none',
-        timestamp: new Date().toISOString(),
-        prompt_length: prompt.length,
-        response_time_ms: Date.now() - startTime,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }
+  }
+  
+  // This should never be reached due to the while loop logic, but TypeScript needs it
+  return {
+    analysis: getFallbackTripAnalysis(tripDescription),
+    responseLog: {
+      provider: 'fallback',
+      model: 'none',
+      timestamp: new Date().toISOString(),
+      prompt_length: prompt.length,
+      response_time_ms: Date.now() - startTime,
+      error: 'Unexpected: loop ended without returning',
+      retries: maxRetries
     }
   }
 }
