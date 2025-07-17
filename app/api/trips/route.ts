@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       group_size: analysis.trip_details.group_size,
       experience_level: analysis.trip_details.experience_level,
       locations: geocodedLocations,
+      itinerary: analysis.trip_details.itinerary, // Include the itinerary!
     }
 
     // Create Supabase client

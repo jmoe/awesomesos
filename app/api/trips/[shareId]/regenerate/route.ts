@@ -49,6 +49,7 @@ export async function POST(
       group_size: analysis.trip_details.group_size,
       experience_level: analysis.trip_details.experience_level,
       locations: geocodedLocations,
+      itinerary: analysis.trip_details.itinerary, // Include the itinerary!
     }
 
     // Log what we're trying to update
