@@ -1,7 +1,7 @@
-import { generateObject } from 'ai'
-import { openai } from '@ai-sdk/openai'
-import { anthropic } from '@ai-sdk/anthropic'
-import { z } from 'zod'
+import { anthropic } from '@ai-sdk/anthropic';
+import { openai } from '@ai-sdk/openai';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
 // Schema for the AI response
 const TripAnalysisSchema = z.object({
@@ -68,60 +68,60 @@ const TripAnalysisSchema = z.object({
     })).max(4),
     local_resources: z.array(z.string()).max(5),
   }),
-})
+});
 
-type TripAnalysis = z.infer<typeof TripAnalysisSchema>
+type TripAnalysis = z.infer<typeof TripAnalysisSchema>;
 
 // Schema for URL content preprocessing
 const URLContentSchema = z.object({
   summary: z.string().describe("A descriptive but concise summary of the trip/event (2-4 sentences) that sounds natural"),
   trip_type: z.enum(['trail', 'event', 'itinerary', 'blog_post', 'guide', 'other']).describe("Type of content - must be one of these exact values"),
   optimized_content: z.string().describe("Detailed content with all trip-relevant information for safety plan generation"),
-})
+});
 
 // Get AI provider based on environment variable
 function getAIProvider() {
-  const provider = process.env.AI_PROVIDER || 'openai'
-  
+  const provider = process.env.AI_PROVIDER || 'openai';
+
   switch (provider.toLowerCase()) {
     case 'anthropic':
     case 'claude':
       if (!process.env.ANTHROPIC_API_KEY) {
-        throw new Error('ANTHROPIC_API_KEY is required when using Anthropic provider')
+        throw new Error('ANTHROPIC_API_KEY is required when using Anthropic provider');
       }
-      return anthropic('claude-3-5-sonnet-20241022')
-    
+      return anthropic('claude-3-5-sonnet-20241022');
+
     case 'openai':
     case 'gpt':
     default:
       if (!process.env.OPENAI_API_KEY) {
-        throw new Error('OPENAI_API_KEY is required when using OpenAI provider')
+        throw new Error('OPENAI_API_KEY is required when using OpenAI provider');
       }
-      return openai('gpt-4o')
+      return openai('gpt-4o');
   }
 }
 
 interface AIAnalysisResult {
-  analysis: TripAnalysis
+  analysis: TripAnalysis;
   responseLog: {
-    provider: string
-    model: string
-    timestamp: string
-    prompt_length: number
-    response_time_ms?: number
-    raw_response?: unknown
-    error?: string
-    retries?: number
-  }
+    provider: string;
+    model: string;
+    timestamp: string;
+    prompt_length: number;
+    response_time_ms?: number;
+    raw_response?: unknown;
+    error?: string;
+    retries?: number;
+  };
 }
 
 export async function analyzeTripAndGenerateSafetyInfo(
   tripDescription: string
 ): Promise<AIAnalysisResult> {
-  const startTime = Date.now()
-  const provider = process.env.AI_PROVIDER || 'openai'
-  const model = getAIProvider()
-  
+  const startTime = Date.now();
+  const provider = process.env.AI_PROVIDER || 'openai';
+  const model = getAIProvider();
+
   const prompt = `You are an expert outdoor safety consultant. Analyze this trip description and extract key details, then generate comprehensive safety information.
 
 CRITICAL REQUIREMENT: Your response MUST include EXACTLY TWO top-level fields:
@@ -281,23 +281,23 @@ You MUST generate a response with EXACTLY TWO top-level fields:
 
 🚨 VALIDATION WILL FAIL if you don't include BOTH fields at the top level!
 
-FINAL CHECK: Before responding, verify your response has BOTH "trip_details" AND "safety_info" as separate top-level fields!`
+FINAL CHECK: Before responding, verify your response has BOTH "trip_details" AND "safety_info" as separate top-level fields!`;
 
-  let retries = 0
-  const maxRetries = 2
-  
+  let retries = 0;
+  const maxRetries = 2;
+
   while (retries <= maxRetries) {
     try {
       const result = await generateObject({
         model,
         schema: TripAnalysisSchema,
-        prompt: retries > 0 ? 
-          `${prompt}\n\nIMPORTANT: Previous attempt failed because safety_info was missing. You MUST include BOTH trip_details AND safety_info fields in your response!` : 
+        prompt: retries > 0 ?
+          `${prompt}\n\nIMPORTANT: Previous attempt failed because safety_info was missing. You MUST include BOTH trip_details AND safety_info fields in your response!` :
           prompt,
-        temperature: 0.7,
-      })
+        temperature: 0.5,
+      });
 
-      const responseTime = Date.now() - startTime
+      const responseTime = Date.now() - startTime;
 
       // Validate that both required fields are present
       if (!result.object.trip_details || !result.object.safety_info) {
@@ -306,31 +306,31 @@ FINAL CHECK: Before responding, verify your response has BOTH "trip_details" AND
           has_safety_info: !!result.object.safety_info,
           response: JSON.stringify(result.object),
           attempt: retries + 1
-        })
-        throw new Error('AI did not generate both required fields')
+        });
+        throw new Error('AI did not generate both required fields');
       }
 
       return {
         analysis: result.object,
         responseLog: {
           provider,
-          model: provider === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet-20241022',
+          model: provider === 'openai' ? 'gpt-4o-mini' : 'claude-3-5-sonnet-20241022',
           timestamp: new Date().toISOString(),
           prompt_length: prompt.length,
           response_time_ms: responseTime,
           raw_response: result,
           retries: retries
         }
-      }
+      };
     } catch (error) {
-      console.error(`AI generation failed (attempt ${retries + 1}/${maxRetries + 1}):`, error)
-      
+      console.error(`AI generation failed (attempt ${retries + 1}/${maxRetries + 1}):`, error);
+
       if (retries < maxRetries) {
-        retries++
-        console.log(`Retrying AI generation (attempt ${retries + 1}/${maxRetries + 1})...`)
-        continue
+        retries++;
+        console.log(`Retrying AI generation (attempt ${retries + 1}/${maxRetries + 1})...`);
+        continue;
       }
-      
+
       // Fallback to mock data if all retries fail
       return {
         analysis: getFallbackTripAnalysis(tripDescription),
@@ -343,10 +343,10 @@ FINAL CHECK: Before responding, verify your response has BOTH "trip_details" AND
           error: error instanceof Error ? error.message : 'Unknown error',
           retries: retries
         }
-      }
+      };
     }
   }
-  
+
   // This should never be reached due to the while loop logic, but TypeScript needs it
   return {
     analysis: getFallbackTripAnalysis(tripDescription),
@@ -359,14 +359,14 @@ FINAL CHECK: Before responding, verify your response has BOTH "trip_details" AND
       error: 'Unexpected: loop ended without returning',
       retries: maxRetries
     }
-  }
+  };
 }
 
 // Fallback trip analysis if AI fails
 function getFallbackTripAnalysis(tripDescription: string): TripAnalysis {
   // Extract location from description (simple regex)
-  const locationMatch = tripDescription.match(/(?:at|to|in)\s+([A-Z][a-zA-Z\s]+?)(?:\s+(?:with|for|this)|[,.]|$)/i)
-  const location = locationMatch ? locationMatch[1].trim() : 'your destination'
+  const locationMatch = tripDescription.match(/(?:at|to|in)\s+([A-Z][a-zA-Z\s]+?)(?:\s+(?:with|for|this)|[,.]|$)/i);
+  const location = locationMatch ? locationMatch[1].trim() : 'your destination';
 
   return {
     trip_details: {
@@ -437,7 +437,7 @@ function getFallbackTripAnalysis(tripDescription: string): TripAnalysis {
         '📱 Verify cell coverage in the area',
       ],
     },
-  }
+  };
 }
 
 export async function preprocessUrlContent(
@@ -445,16 +445,16 @@ export async function preprocessUrlContent(
   title?: string,
   url?: string
 ): Promise<{
-  summary: string
-  optimizedContent: string
-  error?: string
+  summary: string;
+  optimizedContent: string;
+  error?: string;
 }> {
-  const model = getAIProvider()
-  
-  const isAllTrails = url?.includes('alltrails.com')
-  const isOuterSpatial = url?.includes('outerspatial.com')
-  const isTrailWebsite = url && (isAllTrails || isOuterSpatial || url.includes('hikingproject.com') || url.includes('trailforks.com'))
-  
+  const model = getAIProvider();
+
+  const isAllTrails = url?.includes('alltrails.com');
+  const isOuterSpatial = url?.includes('outerspatial.com');
+  const isTrailWebsite = url && (isAllTrails || isOuterSpatial || url.includes('hikingproject.com') || url.includes('trailforks.com'));
+
   const prompt = `You are helping extract trip/adventure information from a webpage. 
 
 Title: ${title || 'No title'}
@@ -467,9 +467,9 @@ ${isTrailWebsite ? 'This appears to be a trail/hiking website.' : ''}
 Please analyze this content and:
 
 1. Create a descriptive but concise summary (2-4 sentences) that captures the essence of the trip/adventure. 
-   ${isTrailWebsite ? 
-     'For trail websites, format like: "I\'m planning to hike [trail name] in [location]. It\'s a [distance] [difficulty] [trail type] with [elevation gain] that typically takes [duration]. [Add one interesting feature or characteristic]."' : 
-     'This should read like something a user would naturally type when describing their plans to a friend. Include key details that make the trip unique.'}
+   ${isTrailWebsite ?
+      'For trail websites, format like: "I\'m planning to hike [trail name] in [location]. It\'s a [distance] [difficulty] [trail type] with [elevation gain] that typically takes [duration]. [Add one interesting feature or characteristic]."' :
+      'This should read like something a user would naturally type when describing their plans to a friend. Include key details that make the trip unique.'}
    
    IMPORTANT: The summary must NOT contain any URLs or look like a URL. Write in natural language only.
    
@@ -533,7 +533,7 @@ The optimized content should be comprehensive and include ALL relevant details t
 IMPORTANT: Your response MUST include all three fields:
 1. summary - The natural language summary
 2. trip_type - One of: trail, event, itinerary, blog_post, guide, other
-3. optimized_content - The detailed extracted information`
+3. optimized_content - The detailed extracted information`;
 
   try {
     const result = await generateObject({
@@ -541,41 +541,41 @@ IMPORTANT: Your response MUST include all three fields:
       schema: URLContentSchema,
       prompt,
       temperature: 0.7,
-    })
+    });
 
     return {
       summary: result.object.summary,
       optimizedContent: result.object.optimized_content,
-    }
+    };
   } catch (error) {
-    console.error('URL content preprocessing failed:', error)
-    
+    console.error('URL content preprocessing failed:', error);
+
     // Try a simpler approach without the enum field
     try {
       const simpleSchema = z.object({
         summary: z.string(),
         optimized_content: z.string(),
-      })
-      
+      });
+
       const simpleResult = await generateObject({
         model,
         schema: simpleSchema,
         prompt: prompt.replace('IMPORTANT: Your response MUST include all three fields:', 'Your response must include:').replace('2. trip_type - One of: trail, event, itinerary, blog_post, guide, other\n3. optimized_content', '2. optimized_content'),
         temperature: 0.7,
-      })
-      
+      });
+
       return {
         summary: simpleResult.object.summary,
         optimizedContent: simpleResult.object.optimized_content,
-      }
+      };
     } catch (retryError) {
-      console.error('Simple schema also failed:', retryError)
+      console.error('Simple schema also failed:', retryError);
       // Final fallback to basic extraction
       return {
         summary: title ? `Trip information from: ${title}` : 'Trip information from webpage',
         optimizedContent: content.substring(0, 2000) + '...',
         error: 'Failed to optimize content',
-      }
+      };
     }
   }
 }
